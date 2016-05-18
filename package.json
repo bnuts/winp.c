@@ -2,9 +2,6 @@
   "name": "winp",
   "version": "0.1.0",
   "src": ["src/winp.c", "src/winp.h", "src/pipes.c", "src/pipes.h"],
-  "dependencies": {
-    "stephenmathieson/batch.c": "*"
-  },
   "development": {
     "stephenmathieson/assertion-macros.h": "*"
   },
