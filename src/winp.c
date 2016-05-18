@@ -1,8 +1,6 @@
 #include <windows.h>
-#include "batch/batch.h"
 #include "pipes.h"
 #include "winp.h"
-
 
 typedef struct {
     HANDLE process;
@@ -11,7 +9,6 @@ typedef struct {
     char* str;
     size_t str_len;
 } stream_data_t;
-
 
 char* append_str(char* str, size_t str_len, char* astr, size_t astr_len)
 {
@@ -30,8 +27,7 @@ char* append_str(char* str, size_t str_len, char* astr, size_t astr_len)
     return str;
 }
 
-
-void* read_from_stream(void* arg)
+DWORD WINAPI read_from_stream(void* arg)
 {
     stream_data_t* stream_data = arg;
     if(!stream_data) return NULL;
@@ -54,11 +50,10 @@ void* read_from_stream(void* arg)
     stream_data->str = str;
     stream_data->str_len = str ? str_len : 0;
 
-    return NULL;
+    return 0;
 }
 
-
-void* write_to_stream(void* arg)
+DWORD WINAPI write_to_stream(void* arg)
 {
     stream_data_t* stream_data = arg;
     if(!stream_data) return NULL;
@@ -69,9 +64,8 @@ void* write_to_stream(void* arg)
         &written, NULL);
     pipe_close(&stream_data->write_pipe);
 
-    return NULL;
+    return 0;
 }
-
 
 int winp_run_impl(
     winp_t* winp, char* command, char* input, size_t input_len, int is_unicode)
@@ -84,13 +78,16 @@ int winp_run_impl(
     int result;
     STARTUPINFO si = {0};
     PROCESS_INFORMATION pi = {0};
-    void* batch = NULL;
 
     si.cb = sizeof(si);
     si.dwFlags = STARTF_USESTDHANDLES;
     si.hStdInput = pipes->stdin_read;
     si.hStdOutput = pipes->stdout_write;
     si.hStdError = pipes->stderr_write;
+
+    const size_t threads_len = input ? 3 : 2;
+    HANDLE threads[threads_len];
+    memset(threads, 0, threads_len * sizeof(HANDLE));
 
     for(;;) {
         if(is_unicode) {
@@ -106,29 +103,29 @@ int winp_run_impl(
         }
         if(!result) break;
 
-        batch = batch_new(3);
-        if(!batch) {result = 0; break;}
+        stream_data_t stdout_data = {
+            pi.hProcess, pipes->stdout_read, pipes->stdout_write, NULL, 0
+        };
+        threads[0] = CreateThread(
+            NULL, 0, read_from_stream, &stdout_data, 0, NULL);
+        if(!threads[0]) {result = 0; break;}
+
+        stream_data_t stderr_data = {
+            pi.hProcess, pipes->stderr_read, pipes->stderr_write, NULL, 0
+        };
+        threads[1] = CreateThread(
+            NULL, 0, read_from_stream, &stderr_data, 0, NULL);
+        if(!threads[1]) {result = 0; break;}
 
         stream_data_t stdin_data = {
             pi.hProcess, pipes->stdin_read, pipes->stdin_write,
             input, input_len
         };
         if(input) {
-            result = batch_push(batch, write_to_stream, &stdin_data);
-            if(result) {result = 0; break;}
+            threads[2] = CreateThread(
+                NULL, 0, write_to_stream, &stdin_data, 0, NULL);
+            if(!threads[2]) {result = 0; break;}
         }
-
-        stream_data_t stdout_data = {
-            pi.hProcess, pipes->stdout_read, pipes->stdout_write, NULL, 0
-        };
-        result = batch_push(batch, read_from_stream, &stdout_data);
-        if(result) {result = 0; break;}
-
-        stream_data_t stderr_data = {
-            pi.hProcess, pipes->stderr_read, pipes->stderr_write, NULL, 0
-        };
-        result = batch_push(batch, read_from_stream, &stderr_data);
-        if(result) {result = 0; break;}
 
         WaitForSingleObject(pi.hProcess, INFINITE);
         GetExitCodeProcess(pi.hProcess, &winp->return_code);
@@ -138,7 +135,7 @@ int winp_run_impl(
         pipe_close(&pipes->stdout_write);
         pipe_close(&pipes->stderr_write);
 
-        batch_wait(batch);
+        WaitForMultipleObjects(threads_len, threads, TRUE, INFINITE);
 
         winp->output = stdout_data.str;
         winp->output_len = stdout_data.str_len;
@@ -151,24 +148,23 @@ int winp_run_impl(
 
     if(pi.hProcess) CloseHandle(pi.hProcess);
     if(pi.hThread) CloseHandle(pi.hThread);
-    batch_end(batch);
+    for(size_t i = 0; i < threads_len; ++i) {
+        if(threads[i]) CloseHandle(threads[i]);
+    }
     pipes_free(pipes);
 
     return result;
 }
-
 
 int winp_run_a(winp_t* winp, char* command, char* input, size_t input_len)
 {
     return winp_run_impl(winp, command, input, input_len, 0);
 }
 
-
 int winp_run_w(winp_t* winp, wchar_t* command, char* input, size_t input_len)
 {
     return winp_run_impl(winp, (char*)command, input, input_len, 1);
 }
-
 
 void winp_free(winp_t* winp)
 {

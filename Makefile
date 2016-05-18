@@ -1,6 +1,6 @@
 CC     ?= cc
 CFLAGS  = -std=c99 -Wall -Wextra -Wno-unused-function -Isrc -Ideps
-LDFLAGS = -lpthread
+LDFLAGS =
 SRCS    = $(wildcard src/*.c)
 SRCS   += $(wildcard test/*.c)
 DEPS    = $(wildcard deps/*/*.c)
