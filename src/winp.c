@@ -10,12 +10,18 @@ typedef struct {
     size_t str_len;
 } stream_data_t;
 
+size_t next_multiple_of(size_t a, size_t b)
+{
+    return ((b + a - 1) / a) * a;
+}
+
 char* append_str(char* str, size_t str_len, char* astr, size_t astr_len)
 {
     if(!astr) return NULL;
     if(!str) str_len = 0;
 
-    char* temp = realloc(str, str_len + astr_len + 1);
+    char* temp = realloc(
+        str, next_multiple_of(8 * 1024 * 1024, str_len + astr_len + 1));
     if(temp) {
         str = temp;
         memcpy(str + str_len, astr, astr_len);
@@ -35,7 +41,7 @@ DWORD WINAPI read_from_stream(void* arg)
     BOOL result;
     DWORD bytes_read;
     DWORD str_len = 0;
-    char bytes[128 * 1024];
+    char bytes[64 * 1024];
     char* str = NULL;
 
     for(;;) {
