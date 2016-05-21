@@ -36,7 +36,7 @@ char* append_str(char* str, size_t str_len, char* astr, size_t astr_len)
 DWORD WINAPI read_from_stream(void* arg)
 {
     stream_data_t* stream_data = arg;
-    if(!stream_data) return NULL;
+    if(!stream_data) return 0;
 
     BOOL result;
     DWORD bytes_read;
@@ -62,7 +62,7 @@ DWORD WINAPI read_from_stream(void* arg)
 DWORD WINAPI write_to_stream(void* arg)
 {
     stream_data_t* stream_data = arg;
-    if(!stream_data) return NULL;
+    if(!stream_data) return 0;
 
     DWORD written;
     WriteFile(
