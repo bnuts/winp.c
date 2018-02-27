@@ -136,7 +136,7 @@ int winp_run_impl(
         WaitForSingleObject(pi.hProcess, INFINITE);
         GetExitCodeProcess(pi.hProcess, &winp->return_code);
 
-        // ここで閉じないとブロックされ続ける。
+        // �����ŕ��Ȃ��ƃu���b�N���ꑱ����B
         pipe_close(&pipes->stdin_read);
         pipe_close(&pipes->stdout_write);
         pipe_close(&pipes->stderr_write);
