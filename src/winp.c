@@ -66,7 +66,7 @@ DWORD WINAPI write_to_stream(void* arg)
 
     DWORD written;
     WriteFile(
-        stream_data->write_pipe, stream_data->str, stream_data->str_len,
+        stream_data->write_pipe, stream_data->str, (DWORD)stream_data->str_len,
         &written, NULL);
     pipe_close(&stream_data->write_pipe);
 
@@ -91,9 +91,8 @@ int winp_run_impl(
     si.hStdOutput = pipes->stdout_write;
     si.hStdError = pipes->stderr_write;
 
-    const size_t threads_len = input ? 3 : 2;
-    HANDLE threads[threads_len];
-    memset(threads, 0, threads_len * sizeof(HANDLE));
+    const DWORD threads_len = input ? 3 : 2;
+    HANDLE threads[3] = {0};
 
     for(;;) {
         if(is_unicode) {
@@ -154,7 +153,7 @@ int winp_run_impl(
 
     if(pi.hProcess) CloseHandle(pi.hProcess);
     if(pi.hThread) CloseHandle(pi.hThread);
-    for(size_t i = 0; i < threads_len; ++i) {
+    for(DWORD i = 0; i < threads_len; ++i) {
         if(threads[i]) CloseHandle(threads[i]);
     }
     pipes_free(pipes);

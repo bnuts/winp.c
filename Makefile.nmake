@@ -1,0 +1,30 @@
+CC      = cl
+CFLAGS  = /nologo /W3 /wd4477 /Isrc /Ideps
+LD      = link
+LDFLAGS = /nologo
+SRCS    = src\winp.c src\pipes.c test\test.c
+OBJS    = $(SRCS:.c=.obj)
+BIN     = winp.exe
+
+
+!if "$(debug)" == "true"
+CFLAGS  = $(CFLAGS) /MTd /Od /Zi /D_DEBUG
+LDFLAGS = $(LDFLAGS) /debug
+!else
+CFLAGS  = $(CFLAGS) /MT /Ox /Oi
+LDFLAGS = $(LDFLAGS) /release
+!endif
+
+
+all: $(BIN)
+
+$(BIN): $(OBJS)
+	$(LD) /out:$@ $(OBJS) $(LDFLAGS)
+
+.c.obj:
+	$(CC) /c $(CFLAGS) /Fo$@ $<
+
+
+.PHONY: clean
+clean:
+	del $(BIN) $(OBJS) *.pdb *.ilk
