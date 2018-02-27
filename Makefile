@@ -1,5 +1,5 @@
 CC     ?= cc
-CFLAGS  = -std=c99 -Wall -Wextra -Wno-unused-function -Isrc -Ideps
+CFLAGS  = -std=c99 -Wall -Wextra -Wno-unused-function -Wno-format -Isrc -Ideps
 LDFLAGS =
 SRCS    = $(wildcard src/*.c)
 SRCS   += $(wildcard test/*.c)
